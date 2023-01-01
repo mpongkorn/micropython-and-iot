@@ -4,6 +4,7 @@ import time
 from lcd_api import LcdApi
 from i2c_lcd import I2cLcd
 import socket
+import _thread
 
 
 #LED
@@ -105,54 +106,79 @@ html_off = '''
 </html>
 
 '''
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP/IP , UTP
-host = ''
-port = 80 #default port of HTTP
-s.bind((host,port))
-s.listen(5)
 
+global led_status
 led_status = 'OFF'
 
-while True:
-    client, addr = s.accept()
-    print('Connection from: ', addr)
-    data = client.recv(1024).decode('utf-8')
-    print([data]) # list of data
-    
-    # check led status
-    try:
-        check = data.split()[1].replace('/','').replace('?','')
-        print('CHECK: ', check)
+def runserver():
+    global led_status
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP/IP , UTP
+    host = ''
+    port = 80 #default port of HTTP
+    s.bind((host,port))
+    s.listen(5)
+
+    led_status = 'OFF'
+
+    while True:
+        client, addr = s.accept()
+        print('Connection from: ', addr)
+        data = client.recv(1024).decode('utf-8')
+        print([data]) # list of data
         
-        if check != '':
-            led_name, led_value = check.split('=')
-            if led_value == 'ON':
-                print('TURN ON LED')
-                led.value(0)
-                client.send(html)
-                client.close()
-                lcd.clear()
-                lcd.putstr('{}: TURNED {}'.format(led_name, led_value))
-                led_status = 'ON'
-                
-            elif led_value == 'OFF':
-                print('TURN OFF LED')
-                led.value(1)
-                client.send(html_off)
-                client.close()
-                lcd.clear()
-                lcd.putstr('{}: TURNED {}'.format(led_name, led_value))
-                led_status = 'OFF'
-        else:
-            if led_status == 'OFF':
-                client.send(html_off)
-            elif led_status == 'ON':
-                client.send(html)
-                
-    except:
-        pass
+        # check led status
+        try:
             
+            check = data.split()[1].replace('/','').replace('?','')
+            print('CHECK: ', check)
             
+            if check != '':
+                led_name, led_value = check.split('=')
+                if led_value == 'ON':
+                    print('TURN ON LED')
+                    led.value(0)
+                    client.send(html)
+                    client.close()
+                    lcd.clear()
+                    lcd.putstr('{}: TURNED {}'.format(led_name, led_value))
+                    led_status = 'ON'
+                    
+                elif led_value == 'OFF':
+                    print('TURN OFF LED')
+                    led.value(1)
+                    client.send(html_off)
+                    client.close()
+                    lcd.clear()
+                    lcd.putstr('{}: TURNED {}'.format(led_name, led_value))
+                    led_status = 'OFF'
+            else:
+                if led_status == 'OFF':
+                    client.send(html_off)
+                elif led_status == 'ON':
+                    client.send(html)
+                    
+        except:
+            pass
+
+def loop_led():
+    global led_status
+    led_name = 'LED'
+    for i in range(100):        
+        led.value(0)
+        lcd.clear()
+        lcd.putstr('{}: ON (AUTO)'.format(led_name))
+        led_status = 'ON'
+        time.sleep(10)
+        
+        led.value(1)
+        lcd.clear()
+        lcd.putstr('{}: OFF'.format(led_name))
+        led_status = 'OFF'
+        time.sleep(10)
+
+
+_thread.start_new_thread(runserver,()) # start thread ทำให้โปรแกรม run parallel ได้
+_thread.start_new_thread(loop_led,())
     
     
     
