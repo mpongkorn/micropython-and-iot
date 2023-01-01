@@ -182,10 +182,3 @@ _thread.start_new_thread(loop_led,())
     
     
     
-    
-    
-
-
-
-
-
